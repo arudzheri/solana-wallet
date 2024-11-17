@@ -11,6 +11,8 @@ const App = () => {
     tokenHoldings: 0,
     transactions: 0,
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const connection = new Connection("https://api.mainnet-beta.solana.com");
 
@@ -26,44 +28,55 @@ const App = () => {
       await provider.connect();
       setWalletAddress(provider.publicKey.toString());
     } catch (err) {
+      setError("Error connecting to wallet.");
       console.error("Error connecting wallet:", err);
     }
   };
 
   // Fetch wallet balance
   const fetchBalance = async () => {
+    setLoading(true);
+    setError(""); // Clear previous errors
     try {
       const publicKey = new PublicKey(walletAddress);
       const balance = await connection.getBalance(publicKey);
       setBalance(balance / 1e9); // Convert lamports to SOL
     } catch (err) {
+      setError("Error fetching balance.");
       console.error("Error fetching balance:", err);
     }
+    setLoading(false);
   };
 
   // Fetch wallet analysis from backend
   const fetchAnalysis = async () => {
+    setLoading(true);
+    setError(""); // Clear previous errors
     try {
       const response = await axios.get("http://127.0.0.1:8000/wallet/analyze");
       setAnalysis(response.data.analysis);
     } catch (err) {
+      setError("Error fetching wallet analysis.");
       console.error("Error fetching analysis:", err);
     }
+    setLoading(false);
   };
 
   // Add new wallet activity
   const addActivity = async () => {
+    setLoading(true);
+    setError(""); // Clear previous errors
     try {
       await axios.post("http://127.0.0.1:8000/wallet/add_activity", {
         address: walletAddress,
-        nft_trades: newActivity.nftTrades,
-        token_holdings: newActivity.tokenHoldings,
-        transactions: newActivity.transactions,
+        activity: newActivity,
       });
       alert("Activity added successfully!");
     } catch (err) {
+      setError("Error adding wallet activity.");
       console.error("Error adding activity:", err);
     }
+    setLoading(false);
   };
 
   return (
@@ -75,11 +88,11 @@ const App = () => {
         <div>
           <p>Wallet Address: {walletAddress}</p>
           <button onClick={fetchBalance}>Get Balance</button>
-          {balance !== null && <p>Balance: {balance} SOL</p>}
+          {loading ? <p>Loading...</p> : balance !== null && <p>Balance: {balance} SOL</p>}
 
           <h2>Analyze Wallet</h2>
           <button onClick={fetchAnalysis}>Fetch Analysis</button>
-          {analysis.length > 0 && (
+          {loading ? <p>Loading...</p> : analysis.length > 0 && (
             <div>
               {analysis.map((entry, index) => (
                 <div key={index}>
@@ -95,29 +108,24 @@ const App = () => {
             type="number"
             placeholder="NFT Trades"
             value={newActivity.nftTrades}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, nftTrades: e.target.value })
-            }
+            onChange={(e) => setNewActivity({ ...newActivity, nftTrades: e.target.value })}
           />
           <input
             type="number"
             placeholder="Token Holdings"
             value={newActivity.tokenHoldings}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, tokenHoldings: e.target.value })
-            }
+            onChange={(e) => setNewActivity({ ...newActivity, tokenHoldings: e.target.value })}
           />
           <input
             type="number"
             placeholder="Transactions"
             value={newActivity.transactions}
-            onChange={(e) =>
-              setNewActivity({ ...newActivity, transactions: e.target.value })
-            }
+            onChange={(e) => setNewActivity({ ...newActivity, transactions: e.target.value })}
           />
           <button onClick={addActivity}>Submit Activity</button>
         </div>
       )}
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 };
