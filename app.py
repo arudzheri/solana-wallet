@@ -1,16 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from solana.rpc.api import Client
 import pandas as pd
 from sklearn.cluster import KMeans
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI()
 
 # Solana RPC Client
-solana_client = Client("https://api.mainnet-beta.solana.com")
+solana_client = Client(os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com"))
 
-# Example wallet activity data
+# Example wallet activity data (simulated, should ideally be stored in a database)
 wallet_activity_data = {
     "wallet": [],
     "nft_trades": [],
@@ -22,13 +27,19 @@ wallet_activity_data = {
 class WalletInput(BaseModel):
     address: str
 
+# Pydantic model for activity input
+class WalletActivity(BaseModel):
+    nft_trades: int
+    token_holdings: int
+    transactions: int
+
 # Fetch wallet balance
 def get_wallet_balance(wallet_address: str):
     try:
         balance = solana_client.get_balance(wallet_address)
         return balance["result"]["value"] / 1e9  # Convert lamports to SOL
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 # AI Analysis
 def analyze_wallet(wallet_data):
@@ -45,17 +56,26 @@ async def wallet_balance(wallet: WalletInput):
     balance = get_wallet_balance(wallet.address)
     return {"wallet": wallet.address, "balance": balance}
 
+# Cache for analysis result
+analysis_cache = None
+
 # API: Analyze wallet activity
 @app.get("/wallet/analyze")
 async def wallet_analyze():
-    result = analyze_wallet(wallet_activity_data)
-    return {"analysis": result}
+    global analysis_cache
+    if analysis_cache is None:  # Only recalculate analysis if not cached
+        result = analyze_wallet(wallet_activity_data)
+        analysis_cache = result
+    return {"analysis": analysis_cache}
 
 # API: Add wallet activity data (simulated)
 @app.post("/wallet/add_activity")
-async def add_activity(wallet: WalletInput, nft_trades: int, token_holdings: int, transactions: int):
+async def add_activity(wallet: WalletInput, activity: WalletActivity):
     wallet_activity_data["wallet"].append(wallet.address)
-    wallet_activity_data["nft_trades"].append(nft_trades)
-    wallet_activity_data["token_holdings"].append(token_holdings)
-    wallet_activity_data["transactions"].append(transactions)
+    wallet_activity_data["nft_trades"].append(activity.nft_trades)
+    wallet_activity_data["token_holdings"].append(activity.token_holdings)
+    wallet_activity_data["transactions"].append(activity.transactions)
+    # Clear the cache so the new data triggers a re-analysis
+    global analysis_cache
+    analysis_cache = None
     return {"message": "Activity added successfully."}
