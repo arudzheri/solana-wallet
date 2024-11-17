@@ -1,0 +1,12 @@
+[package]
+name = "solana_wallet_profiler"
+version = "0.1.0"
+edition = "2021"
+
+# Metadata for Solana program
+[lib]
+crate-type = ["cdylib"] # Required for Solana BPF programs
+
+# Dependencies
+[dependencies]
+solana-program = "1.14.14" # Solana program library for Rust

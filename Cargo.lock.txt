@@ -1,0 +1,13 @@
+[[package]]
+name = "solana-program"
+version = "1.14.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4fbb12345abcd67890ef123456789abcd12345ef67890abcd12345ef67890"
+
+[[package]]
+name = "log"
+version = "0.4.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+
+# More dependencies will be listed here as needed
